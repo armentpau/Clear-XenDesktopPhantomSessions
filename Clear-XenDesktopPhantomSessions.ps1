@@ -1,5 +1,4 @@
-﻿
-param
+﻿param
 (
 	[Alias('Table')]
 	[string]
@@ -17,6 +16,7 @@ param
 )
 
 $finishLoop = 0
+
 do
 {
 	
@@ -49,6 +49,7 @@ Order By [$DatabaseTable].MonitorData.Session.FailureDate"
 		$StringBuilder = New-Object System.Text.StringBuilder
 		#Run the query
 		$recordset = $command.ExecuteReader()
+		$holder = $null
 		$holder = While ($recordset.Read() -eq $true)
 		{
 			#Clear the StringBuilder
@@ -77,7 +78,7 @@ Order By [$DatabaseTable].MonitorData.Session.FailureDate"
 		New-Object -TypeName System.Management.Automation.PSObject -Property @{
 			"FailureDate" = $temp[0].trim()
 			"FailureID" = $temp[1].trim()
-			"Server" = $temp[2].trim().replace("$ServerDomain\", "")
+			"Server" = $temp[2].trim().tolower().replace("$($ServerDomain.ToLower())\", "")
 			"UserName" = $temp[3].trim()
 		}
 	}
@@ -96,9 +97,9 @@ Order By [$DatabaseTable].MonitorData.Session.FailureDate"
 	}
 	##code for sleeping with a progress bar - taken from poshcode
 	##Using this allows for the above to function correctly
-	$x = 15 * 60
-	$length = $x / 100
-	while ($x -gt 0)
+	$TimeBetweenLoops = 15 * 60
+	$length = $TimeBetweenLoops / 100
+	while ($TimeBetweenLoops -gt 0)
 	{
 		if ([Console]::KeyAvailable)
 		{
@@ -112,11 +113,11 @@ Order By [$DatabaseTable].MonitorData.Session.FailureDate"
 				Write-Output $SelectionDate
 			}
 		}
-		$min = [int](([string]($x/60)).split('.')[0])
-		$text = " " + $min + " minutes " + ($x % 60) + " seconds left"
-		Write-Progress "Pausing Script" -status $text -perc ($x/$length)
+		$min = [int](([string]($TimeBetweenLoops/60)).split('.')[0])
+		$text = " " + $min + " minutes " + ($TimeBetweenLoops % 60) + " seconds left"
+		Write-Progress "Pausing Script" -status $text -perc ($TimeBetweenLoops/$length)
 		start-sleep -s 1
-		$x--
+		$TimeBetweenLoops--
 	}
 }
 while ($finishLoop -eq 0)
