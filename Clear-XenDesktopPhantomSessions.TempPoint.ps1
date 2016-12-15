@@ -39,7 +39,7 @@ Where [$DatabaseTable].MonitorData.Session.FailureId = 11 and
 Order By [$DatabaseTable].MonitorData.Session.FailureDate"
 	
 	#Database Connection String
-	$ConnectionString = "Data Source=$databaseInstance;Integrated Security=False;User ID=$databaseUserId;Password=$databasePassword"
+	$ConnectionString = 'Data Source=$databaseInstance;Integrated Security=False;User ID=$databaseUserId;Password=$databasePassword'
 	
 	$connection = New-Object System.Data.SqlClient.SqlConnection ($ConnectionString)
 	$connection.Open()
