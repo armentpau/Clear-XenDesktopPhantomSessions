@@ -1,18 +1,78 @@
-﻿param
+﻿<#
+	.SYNOPSIS
+		Queries the XenDesktop/XenApp citrix database and clears any connection errors found.
+	
+	.DESCRIPTION
+		This script queries the citrix database at the specified time period and then works to reset any affected broker services on impacted servers.
+	
+	.PARAMETER Database
+		The database name where the XenDesktop/XenApp data is stored.  This can be either a live instance of your Citrix database or can be a copy of the datase (provided the copy is within the scan frequency)
+	
+	.PARAMETER DatabaseServerInstance
+		The SQL instance where the Database lives.
+	
+	.PARAMETER DatabaseUserId
+		The username used to log into the Citrix database to query for connection errors.
+	
+	.PARAMETER DatabasePassword
+		The password associated with DatabaseUserId.
+	
+	.PARAMETER ServerDomain
+		The domain name which is prefixed to the server names in the citrix database.  This does not have to be all uppercase as the script converts the entire computer name to lowercase.
+	
+	.PARAMETER OutputFile
+		If specified, the script will output any sessions that is has to reset to a file as well as to the screen.  The outputed file will be in csv format.
+	
+	.PARAMETER MinutesBetweenLoops
+		This is how long the script sleeps before it once again checks the sql database for errors.
+	
+	.EXAMPLE
+		PS C:\> .Clear-XenDesktopPhantomSessions -Database "Client-Citrix" -DatabaseServerInstance "9999sqlni01\9999sqlni01" -DatabaseUserId "username" -DatabasePassword "Password" -ServerDomain "clientDomain" -outputfile "c:\outputFiles\ResetSessions.csv"
+	.EXAMPLE
+		PS C:\> .Clear-XenDesktopPhantomSessions -Database "Client-Citrix" -DatabaseServerInstance "9999sqlni01\9999sqlni01" -DatabaseUserId "username" -DatabasePassword "Password" -ServerDomain "clientDomain" -outputfile "c:\outputFiles\ResetSessions.csv" -MinutesBetweenLoops 10
+	.EXAMPLE
+		PS C:\> .Clear-XenDesktopPhantomSessions -Database "Client-Citrix" -DatabaseServerInstance "9999sqlni01\9999sqlni01" -DatabaseUserId "username" -DatabasePassword "Password" -ServerDomain "clientDomain" -MinutesBetweenLoops 10
+	.EXAMPLE
+		PS C:\> .Clear-XenDesktopPhantomSessions -Database "Client-Citrix" -DatabaseServerInstance "9999sqlni01\9999sqlni01" -DatabaseUserId "username" -DatabasePassword "Password" -ServerDomain "clientDomain"
+	
+	.NOTES
+		Additional information about the file.
+#>
+[CmdletBinding(SupportsShouldProcess = $false)]
+param
 (
-	[Alias('Table')]
+	[Parameter(Mandatory = $true)]
+	[ValidateNotNullOrEmpty()]
 	[string]
-	$DatabaseTable,
+	$Database,
+	[Parameter(Mandatory = $true)]
+	[ValidateNotNullOrEmpty()]
+	[Alias('Server')]
 	[string]
-	$DatabaseInstance,
+	$DatabaseServerInstance,
+	[Parameter(Mandatory = $true)]
+	[ValidateNotNullOrEmpty()]
+	[Alias('Username')]
 	[string]
 	$DatabaseUserId,
+	[Parameter(Mandatory = $true)]
+	[ValidateNotNullOrEmpty()]
+	[Alias('Password')]
 	[string]
 	$DatabasePassword,
+	[Parameter(Mandatory = $true)]
+	[ValidateNotNullOrEmpty()]
+	[Alias('Domain')]
 	[string]
 	$ServerDomain,
+	[Parameter(Mandatory = $false)]
+	[ValidateNotNullOrEmpty()]
+	[Alias('Out', 'File')]
 	[string]
-	$OutputFile
+	$OutputFile,
+	[Alias('Minutes')]
+	[int]
+	$MinutesBetweenLoops = 15
 )
 
 $finishLoop = 0
@@ -21,31 +81,35 @@ do
 {
 	
 	[void][Reflection.Assembly]::Load("System.Data, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089")
-	$SelectionDate = Get-Date((Get-Date).ToUniversalTime().AddMinutes(-15)) -Format "g"
+	$SelectionDate = Get-Date((Get-Date).ToUniversalTime().AddMinutes(-$($MinutesBetweenLoops))) -Format "g"
+	Write-Verbose "Selection date is $($SelectionDate)"
 	#Database Query
-	$QueryString = "Select [$DatabaseTable].MonitorData.Session.FailureDate,
-  [$DatabaseTable].MonitorData.Session.FailureId,
-  [$DatabaseTable].MonitorData.Machine.Name,
-  [$DatabaseTable].MonitorData.[User].UserName
-From [$DatabaseTable].MonitorData.Session
-  Inner Join [$DatabaseTable].MonitorData.Machine
-    On [$DatabaseTable].MonitorData.Machine.Id =
-    [$DatabaseTable].MonitorData.Session.MachineId
-  Inner Join [$DatabaseTable].MonitorData.[User]
-    On [$DatabaseTable].MonitorData.[User].Id =
-    [$DatabaseTable].MonitorData.Session.UserId
-Where [$DatabaseTable].MonitorData.Session.FailureId = 11 and
-[$DatabaseTable].MonitorData.Session.EndDate > '$SelectionDate'
-Order By [$DatabaseTable].MonitorData.Session.FailureDate"
+	$QueryString = "Select [$Database].MonitorData.Session.FailureDate,
+  [$Database].MonitorData.Session.FailureId,
+  [$Database].MonitorData.Machine.Name,
+  [$Database].MonitorData.[User].UserName
+From [$Database].MonitorData.Session
+  Inner Join [$Database].MonitorData.Machine
+    On [$Database].MonitorData.Machine.Id =
+    [$Database].MonitorData.Session.MachineId
+  Inner Join [$Database].MonitorData.[User]
+    On [$Database].MonitorData.[User].Id =
+    [$Database].MonitorData.Session.UserId
+Where [$Database].MonitorData.Session.FailureId = 11 and
+[$Database].MonitorData.Session.EndDate > '$SelectionDate'
+Order By [$Database].MonitorData.Session.FailureDate"
 	
 	#Database Connection String
-	$ConnectionString = "Data Source=$databaseInstance;Integrated Security=False;User ID=$databaseUserId;Password=$databasePassword"
+	$ConnectionString = "Data Source=$DatabaseServerInstance;Integrated Security=False;User ID=$databaseUserId;Password=$databasePassword"
+	Write-Verbose "Connecting to database $($Database)"
 	
 	$connection = New-Object System.Data.SqlClient.SqlConnection ($ConnectionString)
+	Write-Verbose "Attempting to open connection to SQL Database"
 	$connection.Open()
 	if ($connection.State -eq [System.Data.ConnectionState]::Open)
 	{
 		$command = New-Object System.Data.SqlClient.SqlCommand ($QueryString, $connection)
+		Write-Verbose "Creating command $($command)"
 		$StringBuilder = New-Object System.Text.StringBuilder
 		#Run the query
 		$recordset = $command.ExecuteReader()
@@ -69,7 +133,10 @@ Order By [$DatabaseTable].MonitorData.Session.FailureDate"
 		}
 		#Close the Connection
 		$recordset.Close()
+		Write-Verbose "Closing the recordset"
 		$connection.Close();
+		Write-Verbose "Connection closed"
+		Write-Verbose "Going onto the next part to process all of the objects"
 	}
 	$objs = $null
 	$objs = foreach ($item in $holder)
@@ -82,13 +149,19 @@ Order By [$DatabaseTable].MonitorData.Session.FailureDate"
 			"UserName" = $temp[3].trim()
 		}
 	}
+	Write-Verbose $objs
 	if (($objs | Measure-Object).count -gt 0)
 	{
 		foreach ($item in $objs)
 		{
 			Get-Service -computername "$($item.server)" -ServiceName "BrokerAgent" | Restart-Service -Force
 			Write-Output "$($item.server) $($item.name)"
-			$item | export-csv "$($OutputFile)" -Append -NoTypeInformation
+			if ($OutputFile)
+			{
+				Write-Verbose "Outfile is set, exporting data to $($OutputFile)"
+				$item | export-csv "$($OutputFile)" -Append -NoTypeInformation
+				Write-Verbose "Data exported to $($OutputFile)"
+			}
 		}
 	}
 	else
@@ -97,8 +170,11 @@ Order By [$DatabaseTable].MonitorData.Session.FailureDate"
 	}
 	##code for sleeping with a progress bar - taken from poshcode
 	##Using this allows for the above to function correctly
-	$TimeBetweenLoops = 15 * 60
+	Write-Verbose "Minutes Between Checking For Erors Is Set To $($MinutesBetweenLoops)"
+	$TimeBetweenLoops = $minutesBetweenLoop * 60
+	Write-Verbose "TimeBetweenLoops Set To $($TimeBetweenLoops)"
 	$length = $TimeBetweenLoops / 100
+	Write-Verbose "Length Set To $($length)"
 	while ($TimeBetweenLoops -gt 0)
 	{
 		if ([Console]::KeyAvailable)
@@ -106,18 +182,24 @@ Order By [$DatabaseTable].MonitorData.Session.FailureDate"
 			$key = [Console]::ReadKey($true)
 			if ($key.Key -eq "B" -and $key.Modifiers -eq "Control")
 			{
+				Write-Verbose "CTRL+B has been pressed, breaking out of the current $($MinutesBetweenLoops) minute loop and performing a check immediatly"
 				break
 			}
 			if ($key.Key -eq "T" -and $key.Modifiers -eq "Control")
 			{
+				Write-Verbose "CTRL+T has been pressed, the time which is being queried against the database is $($MinutesBetweenLoops)"
 				Write-Output $SelectionDate
 			}
 		}
 		$min = [int](([string]($TimeBetweenLoops/60)).split('.')[0])
+		Write-Verbose "Min is set to $($min)"
 		$text = " " + $min + " minutes " + ($TimeBetweenLoops % 60) + " seconds left"
+		Write-Verbose "Test value is $($text)"
 		Write-Progress "Pausing Script" -status $text -perc ($TimeBetweenLoops/$length)
+		Write-Verbose "Starting to sleep for one second"
 		start-sleep -s 1
 		$TimeBetweenLoops--
+		Write-Verbose "TimeBetweenLoops set to $($TimeBetweenLoops)"
 	}
 }
 while ($finishLoop -eq 0)
