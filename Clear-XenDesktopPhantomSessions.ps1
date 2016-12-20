@@ -1,6 +1,6 @@
 ﻿<#
 	.SYNOPSIS
-		Queries the XenDesktop/XenApp citrix database and clears any connection errors found.
+		Queries the XenDesktop/XenAPp Citrix database and clears any connection errors found by resetting the Broker Agent service on impacted servers.
 	
 	.DESCRIPTION
 		This script queries the citrix database at the specified time period and then works to reset any affected broker services on impacted servers.
