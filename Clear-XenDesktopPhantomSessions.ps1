@@ -1,6 +1,6 @@
 ﻿<#
 	.SYNOPSIS
-		Queries the XenDesktop/XenAPp Citrix database and clears any connection errors found by resetting the Broker Agent service on impacted servers.
+		Queries the XenDesktop/XenApp citrix database and clears any connection errors found.
 	
 	.DESCRIPTION
 		This script queries the citrix database at the specified time period and then works to reset any affected broker services on impacted servers.
@@ -23,13 +23,13 @@
 	.PARAMETER OutputFile
 		If specified, the script will output any sessions that is has to reset to a file as well as to the screen.  The outputed file will be in csv format.
 	
-	.PARAMETER MinutesBetweenLoops
-		This is how long the script sleeps before it once again checks the sql database for errors.
+	.PARAMETER TimeBetweenLoops
+		This is how long the script sleeps before it once again checks the sql database for errors.  This time is in seconds.  The default value is 600 seconds.
 	
 	.EXAMPLE
 		PS C:\> .Clear-XenDesktopPhantomSessions -Database "Client-Citrix" -DatabaseServerInstance "9999sqlni01\9999sqlni01" -DatabaseUserId "username" -DatabasePassword "Password" -ServerDomain "clientDomain" -outputfile "c:\outputFiles\ResetSessions.csv"
 	.EXAMPLE
-		PS C:\> .Clear-XenDesktopPhantomSessions -Database "Client-Citrix" -DatabaseServerInstance "9999sqlni01\9999sqlni01" -DatabaseUserId "username" -DatabasePassword "Password" -ServerDomain "clientDomain" -outputfile "c:\outputFiles\ResetSessions.csv" -MinutesBetweenLoops 10
+		PS C:\> .Clear-XenDesktopPhantomSessions -Database "Client-Citrix" -DatabaseServerInstance "9999sqlni01\9999sqlni01" -DatabaseUserId "username" -DatabasePassword "Password" -ServerDomain "clientDomain" -outputfile "c:\outputFiles\ResetSessions.csv" -TimeBetweenLoops 600
 	.EXAMPLE
 		PS C:\> .Clear-XenDesktopPhantomSessions -Database "Client-Citrix" -DatabaseServerInstance "9999sqlni01\9999sqlni01" -DatabaseUserId "username" -DatabasePassword "Password" -ServerDomain "clientDomain" -MinutesBetweenLoops 10
 	.EXAMPLE
@@ -72,7 +72,7 @@ param
 	$OutputFile,
 	[Alias('Minutes')]
 	[int]
-	$MinutesBetweenLoops = 15
+	$TimeBetweenLoops = 600
 )
 
 $finishLoop = 0
@@ -81,7 +81,7 @@ do
 {
 	
 	[void][Reflection.Assembly]::Load("System.Data, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089")
-	$SelectionDate = Get-Date((Get-Date).ToUniversalTime().AddMinutes(-$($MinutesBetweenLoops))) -Format "g"
+	$SelectionDate = Get-Date((Get-Date).ToUniversalTime().addseconds(-$($TimeBetweenLoops))) -Format "g"
 	Write-Verbose "Selection date is $($SelectionDate)"
 	#Database Query
 	$QueryString = "Select [$Database].MonitorData.Session.FailureDate,
@@ -149,7 +149,6 @@ Order By [$Database].MonitorData.Session.FailureDate"
 			"UserName" = $temp[3].trim()
 		}
 	}
-	Write-Verbose $objs
 	if (($objs | Measure-Object).count -gt 0)
 	{
 		foreach ($item in $objs)
@@ -170,9 +169,7 @@ Order By [$Database].MonitorData.Session.FailureDate"
 	}
 	##code for sleeping with a progress bar - taken from poshcode
 	##Using this allows for the above to function correctly
-	Write-Verbose "Minutes Between Checking For Erors Is Set To $($MinutesBetweenLoops)"
-	$TimeBetweenLoops = $minutesBetweenLoop * 60
-	Write-Verbose "TimeBetweenLoops Set To $($TimeBetweenLoops)"
+	Write-Verbose "TimeBetweenLoops Set To $TimeBetweenLoops"
 	$length = $TimeBetweenLoops / 100
 	Write-Verbose "Length Set To $($length)"
 	while ($TimeBetweenLoops -gt 0)
@@ -182,12 +179,11 @@ Order By [$Database].MonitorData.Session.FailureDate"
 			$key = [Console]::ReadKey($true)
 			if ($key.Key -eq "B" -and $key.Modifiers -eq "Control")
 			{
-				Write-Verbose "CTRL+B has been pressed, breaking out of the current $($MinutesBetweenLoops) minute loop and performing a check immediatly"
+				Write-Verbose "CTRL+B has been pressed, breaking out of the current"
 				break
 			}
 			if ($key.Key -eq "T" -and $key.Modifiers -eq "Control")
 			{
-				Write-Verbose "CTRL+T has been pressed, the time which is being queried against the database is $($MinutesBetweenLoops)"
 				Write-Output $SelectionDate
 			}
 		}
