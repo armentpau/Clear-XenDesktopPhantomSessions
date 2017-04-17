@@ -24,8 +24,8 @@ The domain name which is prefixed to the server names in the citrix database.  T
 ## PARAMETER OutputFile
 If specified, the script will output any sessions that is has to reset to a file as well as to the screen.  The outputed file will be in csv format.
 	
-## PARAMETER MinutesBetweenLoops
-This is how long the script sleeps before it once again checks the sql database for errors.
+## PARAMETER TimeBetweenLoops
+This is how long the script sleeps before it once again checks the sql database for errors.  This time is in seconds.  The default value is 600 seconds.
 	
 ## EXAMPLE
 
@@ -37,11 +37,8 @@ PS C:\> .Clear-XenDesktopPhantomSessions -Database "Client-Citrix" -DatabaseServ
  
 ## EXAMPLE
 
-PS C:\> .Clear-XenDesktopPhantomSessions -Database "Client-Citrix" -DatabaseServerInstance "9999sqlni01\9999sqlni01" -DatabaseUserId "username" -DatabasePassword "Password" -ServerDomain "clientDomain" -MinutesBetweenLoops 10
+PS C:\> .Clear-XenDesktopPhantomSessions -Database "Client-Citrix" -DatabaseServerInstance "9999sqlni01\9999sqlni01" -DatabaseUserId "username" -DatabasePassword "Password" -ServerDomain "clientDomain" -TimeBetweenLoops 600
 
 ## EXAMPLE
 
 PS C:\> .Clear-XenDesktopPhantomSessions -Database "Client-Citrix" -DatabaseServerInstance "9999sqlni01\9999sqlni01" -DatabaseUserId "username" -DatabasePassword "Password" -ServerDomain "clientDomain"
-
-## NOTES
-Additional information about the file.
