@@ -76,7 +76,7 @@ param
 )
 
 $finishLoop = 0
-
+$origTime = $TimeBetweenLoops
 do
 {
 	
@@ -169,6 +169,7 @@ Order By [$Database].MonitorData.Session.FailureDate"
 	}
 	##code for sleeping with a progress bar - taken from poshcode
 	##Using this allows for the above to function correctly
+	$TimeBetweenLoops = $origTime
 	Write-Verbose "TimeBetweenLoops Set To $TimeBetweenLoops"
 	$length = $TimeBetweenLoops / 100
 	Write-Verbose "Length Set To $($length)"
