@@ -79,7 +79,7 @@ $finishLoop = 0
 $origTime = $TimeBetweenLoops
 do
 {
-	
+	$TimeBetweenLoops = $origTime
 	[void][Reflection.Assembly]::Load("System.Data, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089")
 	$SelectionDate = Get-Date((Get-Date).ToUniversalTime().addseconds(-$($TimeBetweenLoops))) -Format "g"
 	Write-Verbose "Selection date is $($SelectionDate)"
@@ -169,7 +169,6 @@ Order By [$Database].MonitorData.Session.FailureDate"
 	}
 	##code for sleeping with a progress bar - taken from poshcode
 	##Using this allows for the above to function correctly
-	$TimeBetweenLoops = $origTime
 	Write-Verbose "TimeBetweenLoops Set To $TimeBetweenLoops"
 	$length = $TimeBetweenLoops / 100
 	Write-Verbose "Length Set To $($length)"
