@@ -153,8 +153,14 @@ Order By [$Database].MonitorData.Session.FailureDate"
 	{
 		foreach ($item in $objs)
 		{
-			Get-Service -computername "$($item.server)" -ServiceName "BrokerAgent" | Restart-Service -Force
-			Write-Output "$($item.server) $($item.name)"
+		try{
+			Get-Service -computername "$($item.server.split('\')[1]).$($serverdomain)" -ServiceName "BrokerAgent" -ErrorAction Stop | Restart-Service -Force -ErrorAction Stop
+			Write-Output "Reset service on $($item.server.split('\')[1]).$($serverdomain)"
+			}
+			catch{
+			Write-Error "Unable to stop the service on $($item.server.split('\')[1])"
+			}
+			
 			if ($OutputFile)
 			{
 				Write-Verbose "Outfile is set, exporting data to $($OutputFile)"
